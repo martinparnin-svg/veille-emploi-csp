@@ -1,13 +1,13 @@
 name: Collecte des offres CSP
 
-# Tous les matins vers 6h30 (Paris, heure d'hiver ; 7h30 en été) :
+# Tous les matins vers 5h (Paris, heure d'hiver ; 6h en été), avec de la marge :
 # collecte des offres de la veille,
 # enregistrées dans data/AAAA-MM-JJ.json et data/latest.json.
 # La tâche Claude planifiée de 8h30 lit data/latest.json.
 
 on:
   schedule:
-    - cron: "30 5 * * *"
+    - cron: "0 4 * * *"
   workflow_dispatch:
     inputs:
       since:

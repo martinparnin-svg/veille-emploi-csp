@@ -59,6 +59,48 @@ def categorie(o: dict) -> str:
     return m.group(1) if m else (c or "non précisée")
 
 
+FONCTIONS = [
+    (r"adjoint\w* (au |a la |du )?chef\w* (du |de )?bureau", "Adjoint(e) au chef de bureau"),
+    (r"chef\w* (du |de )?bureau", "Chef(fe) de bureau"),
+    (r"charge\w* de mission", "Chargé(e) de mission"),
+    (r"chef\w* de mission", "Chef(fe) de mission"),
+    (r"adjoint\w* .*(chef|responsable|direct)|(chef|responsable)\w* .*adjoint", "Adjoint(e) à un responsable"),
+    (r"(chef\w*|charge\w*|directeur|directrice) de projets?", "Chef(fe) / chargé(e) de projet"),
+    (r"chef\w* (de |du |d.)?(la )?(service|pole|departement|division|unite|cellule|section)", "Chef(fe) de service ou de pôle"),
+    (r"(sous-)?direct(eur|rice)", "Direction"),
+    (r"charge\w* d.etudes|analyste", "Chargé(e) d'études"),
+    (r"juriste|charge\w* d.affaires juridiques", "Juriste"),
+    (r"conseill(er|ere)", "Conseiller(e)"),
+    (r"redact(eur|rice)", "Rédacteur(rice)"),
+    (r"coordo?n?n?at(eur|rice)|coordinat", "Coordinateur(rice)"),
+    (r"responsable", "Responsable"),
+    (r"referent", "Référent(e)"),
+    (r"gestionnaire", "Gestionnaire"),
+    (r"inspect(eur|rice)", "Inspecteur(rice)"),
+    (r"ingenieu?r", "Ingénieur(e)"),
+    (r"educat|travailleu|social|psycholog|medecin|infirmi|enseignant|puericult|petite enfance", "Éducatif, social ou santé"),
+    (r"assistant", "Assistant(e)"),
+    (r"expert", "Expert(e)"),
+    (r"collaborat(eur|rice) de cabinet|cabinet", "Cabinet"),
+    (r"^charge|charge\w* d", "Chargé(e) de dossiers"),
+    (r"postdoc|doctorant|chercheu", "Recherche"),
+]
+
+
+def fonction(o: dict) -> str:
+    """Fonction déduite de l'intitulé, sinon le métier de référence de CSP."""
+    t = sans_accents(o.get("titre", ""))
+    t = re.sub(r"[.(·]\s*(e|fe|ne|rice|ice|trice|euse|ere)\)?(?=\W|$)", "", t)
+    for motif, libelle in FONCTIONS:
+        if re.search(motif, t):
+            return libelle
+    return o.get("metier_reference") or "Autre"
+
+
+def domaine(o: dict) -> str:
+    return o.get("domaine") or "non précisé"
+
+
 def type_poste(o: dict) -> str:
     n = sans_accents(o.get("nature_emploi") or "")
     if "uniquement aux contractuels" in n:
@@ -99,7 +141,9 @@ def lignes(date: str) -> list[dict]:
             "Ministère / administration": administration(o),
             "Catégorie": categorie(o),
             "Intitulé du poste": o.get("titre", ""),
-            "Type de poste": type_poste(o),
+            "Fonction": fonction(o),
+            "Domaine": domaine(o),
+            "Ouvert à": type_poste(o),
             "Lien": o["url"],
             "Retenu": "Oui" if etoiles >= 2 else "Non",
             "Étoiles": "★" * etoiles,
@@ -137,9 +181,9 @@ def feuille(ws, rows: list[dict], colonnes: list[str], largeurs: dict[str, int])
 
 
 COLS = ["Publiée le", "Ministère / administration", "Catégorie", "Intitulé du poste",
-        "Type de poste", "Lien", "Retenu", "Étoiles", "Raison"]
+        "Fonction", "Domaine", "Ouvert à", "Lien", "Retenu", "Étoiles", "Raison"]
 LARG = {"Récap du": 11, "Publiée le": 11, "Ministère / administration": 34, "Catégorie": 10,
-        "Intitulé du poste": 48, "Type de poste": 22, "Lien": 15, "Retenu": 8,
+        "Intitulé du poste": 48, "Fonction": 24, "Domaine": 28, "Ouvert à": 22, "Lien": 15, "Retenu": 8,
         "Étoiles": 8, "Raison": 60}
 
 

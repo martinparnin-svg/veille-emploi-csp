@@ -176,7 +176,7 @@ def dump_filters(html: str, path: Path) -> None:
 LABELS = [
     "Organisme de rattachement", "Employeur", "Versant", "Fonction publique",
     "Catégorie", "Nature de l'emploi", "Nature de l’emploi", "Expérience souhaitée",
-    "Rémunération", "Domaine", "Métier", "Télétravail possible", "Télétravail", "Management",
+    "Rémunération", "Domaine", "Métier de référence", "Métier", "Télétravail possible", "Télétravail", "Management",
     "Date de vacance de l'emploi", "Date de vacance de l’emploi",
     "Localisation du poste", "Localisation", "Référence", "Date limite de candidature",
 ]
@@ -373,6 +373,8 @@ def main() -> int:
         o["rattachement"] = ch.get("organisme de rattachement", "")
         o["date_limite"] = ch.get("date limite de candidature", "")
         o["reference"] = ch.get("reference", "")
+        o["domaine"] = ch.get("domaine", "")
+        o["metier_reference"] = ch.get("metier de reference", "")
         o["extrait"] = d["extrait"] if d else ""
         texte = norm(o["titre"]) + " " + (d["texte_norm"] if d else "")
         o["mots_cles_texte"] = [m for m in cfg["mots_cles"] if norm(m) in texte]
