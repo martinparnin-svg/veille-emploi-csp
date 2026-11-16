@@ -1,5 +1,5 @@
 # Modifier ce fichier et le pousser lance une collecte d'essai.
 since: "2026-11-13"
 until: "2026-11-16"
-debug: true
-essai: 1
+debug: false
+essai: 2

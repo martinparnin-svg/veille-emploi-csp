@@ -4,10 +4,12 @@
 
 site: "https://choisirleservicepublic.gouv.fr"
 
-# Segment de filtres ajouté à chaque recherche, après le mot-clé
-# (ex. "localisation/XXXX/categorie/YYYY/"). Vide = pas de filtre côté site ;
-# la localisation et la catégorie sont alors filtrées par le script.
-filtres_site: ""
+# Filtres du site ajoutés à chaque recherche, après le mot-clé :
+# localisation 208 = Île-de-France ; catégorie 1805 = A, 4327-4328 = A+ ;
+# publication des 7 derniers jours (le script resserre ensuite sur la veille).
+# Le moteur CSP trie par pertinence et non par date : ces filtres sont
+# indispensables pour que toutes les offres récentes soient lues.
+filtres_site: "localisation/208/categorie/1805-4327-4328/date-de-publication/7_derniers_jours"
 
 # Mots-clés lancés un par un dans le moteur de recherche CSP.
 mots_cles:
