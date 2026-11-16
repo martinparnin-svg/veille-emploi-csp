@@ -1,0 +1,78 @@
+name: Collecte des offres CSP
+
+# Tous les matins vers 6h30 (Paris, heure d'hiver ; 7h30 en été) :
+# collecte des offres de la veille (le lundi : vendredi → dimanche),
+# enregistrées dans data/AAAA-MM-JJ.json et data/latest.json.
+# La tâche Claude planifiée de 8h30 lit data/latest.json.
+
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Début de la fenêtre (AAAA-MM-JJ), vide = automatique"
+        required: false
+      until:
+        description: "Fin de la fenêtre (AAAA-MM-JJ), vide = automatique"
+        required: false
+      debug:
+        description: "Sauvegarder le HTML brut dans debug/ (true/false)"
+        required: false
+        default: "false"
+  # Lancement d'essai : modifier run/demande.yml et pousser.
+  push:
+    branches: [main]
+    paths: ["run/demande.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collecte
+  cancel-in-progress: false
+
+jobs:
+  collecte:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dépendances
+        run: pip install -q -r requirements.txt
+
+      - name: Paramètres
+        id: p
+        run: |
+          SINCE="${{ github.event.inputs.since }}"
+          UNTIL="${{ github.event.inputs.until }}"
+          DEBUG="${{ github.event.inputs.debug }}"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            SINCE=$(python -c "import yaml;print(yaml.safe_load(open('run/demande.yml')).get('since') or '')")
+            UNTIL=$(python -c "import yaml;print(yaml.safe_load(open('run/demande.yml')).get('until') or '')")
+            DEBUG=$(python -c "import yaml;print(str(yaml.safe_load(open('run/demande.yml')).get('debug', False)).lower())")
+          fi
+          ARGS=""
+          [ -n "$SINCE" ] && ARGS="$ARGS --since $SINCE"
+          [ -n "$UNTIL" ] && ARGS="$ARGS --until $UNTIL"
+          [ "$DEBUG" = "true" ] && ARGS="$ARGS --debug"
+          echo "args=$ARGS" >> "$GITHUB_OUTPUT"
+
+      - name: Collecter
+        run: python scripts/collect.py ${{ steps.p.outputs.args }} 2>&1 | tee collecte.log
+
+      - name: Enregistrer les résultats
+        if: always()
+        run: |
+          mkdir -p logs && cp collecte.log "logs/derniere-collecte.log" || true
+          git config user.name "veille-emploi-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data logs debug 2>/dev/null || true
+          if git diff --cached --quiet; then echo "Rien à enregistrer"; exit 0; fi
+          git commit -q -m "Collecte du $(TZ=Europe/Paris date +%F)"
+          for i in 1 2 3; do git pull -q --rebase && git push -q && break; sleep 5; done

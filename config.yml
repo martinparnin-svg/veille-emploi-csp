@@ -1,0 +1,93 @@
+# Veille emploi — Choisir le service public (CSP)
+# Collecte quotidienne : GitHub Actions lance scripts/collect.py vers 6h30 (Paris).
+# Le tri fin selon le profil est fait ensuite par la tâche Claude planifiée (8h30).
+
+site: "https://choisirleservicepublic.gouv.fr"
+
+# Segment de filtres ajouté à chaque recherche, après le mot-clé
+# (ex. "localisation/XXXX/categorie/YYYY/"). Vide = pas de filtre côté site ;
+# la localisation et la catégorie sont alors filtrées par le script.
+filtres_site: ""
+
+# Mots-clés lancés un par un dans le moteur de recherche CSP.
+mots_cles:
+  - "international"
+  - "internationales"
+  - "multilatéral"
+  - "multilatérale"
+  - "Nations unies"
+  - "Conseil de l'Europe"
+  - "droits de l'homme"
+  - "droits humains"
+  - "droits fondamentaux"
+  - "droits de l'enfant"
+  - "protection de l'enfance"
+  - "enfance"
+  - "mineurs"
+
+# Départements retenus (Paris et Île-de-France).
+departements: ["75", "77", "78", "91", "92", "93", "94", "95"]
+libelles_region: ["Île-de-France", "Ile-de-France", "Ile de France", "Île de France"]
+
+# Catégories retenues (si la catégorie est indiquée sur l'offre).
+categories: ["A+", "A"]
+
+# Candidate contractuelle : les emplois réservés aux fonctionnaires sont gardés mais signalés.
+exclure_reserve_fonctionnaires: false  # true pour les écarter
+
+# Employeurs exclus : tout ce qui relève du ministère de l'Intérieur.
+# Comparaison sans accents ni majuscules, sur l'employeur et le rattachement.
+exclusions_employeur:
+  - "ministere de l'interieur"
+  - "interieur et des outre-mer"
+  - "prefecture"
+  - "sous-prefecture"
+  - "police"
+  - "gendarmerie"
+  - "dgpn"
+  - "dggn"
+  - "dgsi"
+  - "dgef"
+  - "dgscgc"
+  - "securite civile"
+  - "sgami"
+  - "ofmin"
+  - "ants"
+  - "agence nationale des titres securises"
+  - "cnaps"
+  - "direction generale des etrangers"
+  - "direction des libertes publiques"
+  - "secretariat general du ministere de l'interieur"
+
+# Intitulés manifestement hors cible (métiers de terrain), écartés d'office.
+exclusions_intitule:
+  - "educateur"
+  - "educatrice"
+  - "assistant social"
+  - "assistante sociale"
+  - "assistant(e) social"
+  - "infirmier"
+  - "infirmiere"
+  - "auxiliaire de puericulture"
+  - "puericultrice"
+  - "atsem"
+  - "animateur"
+  - "animatrice"
+  - "agent d'entretien"
+  - "cuisinier"
+  - "psychologue"
+  - "medecin"
+  - "enseignant"
+  - "professeur"
+  - "moniteur"
+  - "surveillant"
+  - "aide-soignant"
+  - "assistant familial"
+  - "assistante familiale"
+
+# Longueur maximale de l'extrait de description conservé par offre.
+extrait_max: 1500
+# Nombre maximal de pages de résultats parcourues par mot-clé.
+pages_max: 15
+# Pause entre deux requêtes (secondes), pour ménager le site.
+pause: 1.0
