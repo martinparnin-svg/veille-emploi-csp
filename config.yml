@@ -5,11 +5,11 @@
 site: "https://choisirleservicepublic.gouv.fr"
 
 # Filtres du site ajoutés à chaque recherche, après le mot-clé :
-# localisation 208 = Île-de-France ; catégorie 1805 = A, 4327-4328 = A+ ;
+# localisation 208 = Île-de-France ; catégorie 1805 = A (4327-4328 = A+, retirée) ;
 # publication des 7 derniers jours (le script resserre ensuite sur la veille).
 # Le moteur CSP trie par pertinence et non par date : ces filtres sont
 # indispensables pour que toutes les offres récentes soient lues.
-filtres_site: "localisation/208/categorie/1805-4327-4328/date-de-publication/7_derniers_jours"
+filtres_site: "localisation/208/categorie/1805/date-de-publication/7_derniers_jours"
 
 # Mots-clés lancés un par un dans le moteur de recherche CSP.
 mots_cles:
@@ -32,7 +32,7 @@ departements: ["75", "77", "78", "91", "92", "93", "94", "95"]
 libelles_region: ["Île-de-France", "Ile-de-France", "Ile de France", "Île de France"]
 
 # Catégories retenues (si la catégorie est indiquée sur l'offre).
-categories: ["A+", "A"]
+categories: ["A"]
 
 # Candidate contractuelle : les emplois réservés aux fonctionnaires sont gardés mais signalés.
 exclure_reserve_fonctionnaires: false  # true pour les écarter

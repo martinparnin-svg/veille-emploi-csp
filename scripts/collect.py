@@ -248,14 +248,39 @@ def excluded(text: str, motifs: list[str]) -> str | None:
 
 
 def category_ok(cat: str, cfg: dict) -> bool | None:
+    """Catégorie dans la liste du réglage « categories » (A+ et A distingués)."""
     if not cat:
         return None
-    c = norm(cat)
-    if "a+" in c.replace(" ", ""):
-        return True
-    if re.search(r"\b(categorie\s*)?a\b", c) and not re.search(r"\b[bc]\b", c):
-        return True
-    return False
+    c = norm(cat).replace(" ", "")
+    lettre = "A+" if "a+" in c else (m.group(1).upper() if (m := re.search(r"categorie([abc])", c)) else "")
+    if not lettre:
+        return None
+    return lettre in cfg["categories"]
+
+
+def motif_exclusion(o: dict, ch: dict, d: dict | None, cfg: dict) -> str:
+    """Raison pour laquelle l'annonce est écartée automatiquement ('' si gardée)."""
+    m = excluded(" ".join([o["employeur"], o.get("rattachement", "")]), cfg["exclusions_employeur"])
+    if m:
+        return f"ministère de l'Intérieur ({m})"
+    m = excluded(o["titre"], cfg["exclusions_intitule"])
+    if m:
+        return f"métier hors cible ({m})"
+    if in_idf(ch.get("localisation du poste", "") or o["localisation"], cfg) is False:
+        return "hors Île-de-France"
+    if category_ok(o.get("categorie", ""), cfg) is False:
+        return f"catégorie non retenue ({o['categorie']})"
+    if cfg.get("exclure_reserve_fonctionnaires") and re.search(
+            r"reserve aux fonctionnaires|reserve aux titulaires|uniquement aux fonctionnaires",
+            norm(o.get("nature_emploi", ""))):
+        return "réservé aux fonctionnaires"
+    if d is None:
+        return ""  # fiche illisible : le tri décidera sur le titre
+    # Le moteur CSP rapproche les mots séparément (« droits », « unies »…) :
+    # on exige qu'au moins une expression recherchée figure telle quelle.
+    if not o["mots_cles_texte"]:
+        return "aucun mot-clé dans la description"
+    return ""
 
 
 # ---------------------------------------------------------------- principal
@@ -332,32 +357,15 @@ def main() -> int:
         stats["mots_cles"][kw].update({"offres_vues": vus_kw, "dans_fenetre": dans_fenetre})
         print(f"« {kw} » : {vus_kw} vues, {dans_fenetre} dans la fenêtre")
 
-    # filtres sur la liste
-    retenues, ecartees = [], []
-    for o in candidats.values():
-        motif = excluded(o["titre"], cfg["exclusions_intitule"])
-        if motif:
-            ecartees.append({**o, "motif": f"intitulé ({motif})"})
-            continue
-        motif = excluded(o["employeur"], cfg["exclusions_employeur"])
-        if motif:
-            ecartees.append({**o, "motif": f"Intérieur ({motif})"})
-            continue
-        if in_idf(o["localisation"], cfg) is False:
-            ecartees.append({**o, "motif": "hors Île-de-France"})
-            continue
-        retenues.append(o)
-
-    # fiches détaillées
-    final = []
-    for k, o in enumerate(retenues):
+    # Chaque annonce trouvée est ouverte : le tableur quotidien doit indiquer
+    # la catégorie et la nature de l'emploi de toutes les annonces, y compris
+    # celles écartées automatiquement.
+    annonces = []
+    for k, o in enumerate(candidats.values()):
+        o["mots_cles_recherche"] = o.pop("mots_cles", [])
         html = cli.get(o["url"], f"fiche-{k}" if args.debug and k < 3 else "")
-        if not html:
-            o["fiche"] = "indisponible"
-            final.append(o)
-            continue
-        d = parse_detail(html, cfg.get("extrait_max", 1500))
-        ch = d["champs"]
+        d = parse_detail(html, cfg.get("extrait_max", 1500)) if html else None
+        ch = d["champs"] if d else {}
         o["categorie"] = ch.get("categorie", "")
         o["nature_emploi"] = ch.get("nature de l'emploi", "")
         o["teletravail"] = ch.get("teletravail", "")
@@ -365,38 +373,21 @@ def main() -> int:
         o["rattachement"] = ch.get("organisme de rattachement", "")
         o["date_limite"] = ch.get("date limite de candidature", "")
         o["reference"] = ch.get("reference", "")
-        o["extrait"] = d["extrait"]
-        motif = excluded(" ".join([o["rattachement"], o["employeur"]]), cfg["exclusions_employeur"])
-        if motif:
-            ecartees.append({**o, "motif": f"Intérieur ({motif})"})
-            continue
-        if cfg.get("exclure_reserve_fonctionnaires") and re.search(
-                r"reserve aux fonctionnaires|reserve aux titulaires|uniquement aux fonctionnaires",
-                norm(o["nature_emploi"])):
-            ecartees.append({**o, "motif": "réservé aux fonctionnaires"})
-            continue
-        # Le moteur CSP rapproche les mots séparément (« droits », « unies »…) :
-        # on exige qu'au moins une expression recherchée figure telle quelle.
-        texte = norm(o["titre"]) + " " + d["texte_norm"]
-        trouves = [k for k in cfg["mots_cles"] if norm(k) in texte]
-        if not trouves:
-            ecartees.append({**o, "motif": "expression absente du texte"})
-            continue
-        o["mots_cles"] = trouves
-        if category_ok(o["categorie"], cfg) is False:
-            ecartees.append({**o, "motif": f"catégorie {o['categorie']}"})
-            continue
-        if in_idf(ch.get("localisation du poste", "") or o["localisation"], cfg) is False:
-            ecartees.append({**o, "motif": "hors Île-de-France"})
-            continue
-        final.append(o)
+        o["extrait"] = d["extrait"] if d else ""
+        texte = norm(o["titre"]) + " " + (d["texte_norm"] if d else "")
+        o["mots_cles_texte"] = [m for m in cfg["mots_cles"] if norm(m) in texte]
+        o["motif"] = motif_exclusion(o, ch, d, cfg)
+        annonces.append(o)
 
+    final = [o for o in annonces if not o["motif"]]
+    ecartees = [o for o in annonces if o["motif"]]
     sortie = {
         "collecte": dt.datetime.now(PARIS).isoformat(timespec="minutes"),
         "fenetre": {"du": since.isoformat(), "au": until.isoformat()},
+        "nb_annonces": len(annonces),
         "nb_offres": len(final),
         "offres": final,
-        "ecartees": [{k: v for k, v in e.items() if k in ("titre", "employeur", "localisation", "url", "motif")} for e in ecartees],
+        "ecartees": [{k: v for k, v in e.items() if k != "extrait"} for e in ecartees],
         "stats": {**stats, "requetes": cli.n},
     }
     data = ROOT / "data"
@@ -404,7 +395,7 @@ def main() -> int:
     txt = json.dumps(sortie, ensure_ascii=False, indent=1)
     (data / f"{today.isoformat()}.json").write_text(txt, encoding="utf-8")
     (data / "latest.json").write_text(txt, encoding="utf-8")
-    print(f"{len(final)} offres retenues, {len(ecartees)} écartées, {cli.n} requêtes.")
+    print(f"{len(annonces)} annonces, {len(final)} transmises au tri, {len(ecartees)} écartées, {cli.n} requêtes.")
     if not candidats and stats["pages"]:
         print("ATTENTION : aucune offre lue — la structure du site a peut-être changé.", file=sys.stderr)
         return 2
