@@ -1,7 +1,7 @@
 name: Collecte des offres CSP
 
 # Tous les matins vers 6h30 (Paris, heure d'hiver ; 7h30 en été) :
-# collecte des offres de la veille (le lundi : vendredi → dimanche),
+# collecte des offres de la veille,
 # enregistrées dans data/AAAA-MM-JJ.json et data/latest.json.
 # La tâche Claude planifiée de 8h30 lit data/latest.json.
 

@@ -9,7 +9,7 @@ la nature de l'emploi, le télétravail et un extrait de description.
 Résultat : data/AAAA-MM-JJ.json (date de collecte) et data/latest.json.
 
 Usage :
-  python scripts/collect.py                       # veille = hier (lundi : ven.→dim.)
+  python scripts/collect.py                       # veille = hier
   python scripts/collect.py --since 2026-11-13 --until 2026-11-16
   python scripts/collect.py --debug               # sauvegarde le HTML brut dans debug/
 """
@@ -261,9 +261,8 @@ def category_ok(cat: str, cfg: dict) -> bool | None:
 # ---------------------------------------------------------------- principal
 
 def default_window(today: dt.date) -> tuple[dt.date, dt.date]:
+    """La collecte tourne tous les jours : chaque matin couvre la veille."""
     hier = today - dt.timedelta(days=1)
-    if today.weekday() == 0:  # lundi : vendredi, samedi, dimanche
-        return today - dt.timedelta(days=3), hier
     return hier, hier
 
 
