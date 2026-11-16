@@ -176,7 +176,7 @@ def dump_filters(html: str, path: Path) -> None:
 LABELS = [
     "Organisme de rattachement", "Employeur", "Versant", "Fonction publique",
     "Catégorie", "Nature de l'emploi", "Nature de l’emploi", "Expérience souhaitée",
-    "Rémunération", "Domaine", "Métier", "Télétravail", "Management",
+    "Rémunération", "Domaine", "Métier", "Télétravail possible", "Télétravail", "Management",
     "Date de vacance de l'emploi", "Date de vacance de l’emploi",
     "Localisation du poste", "Localisation", "Référence", "Date limite de candidature",
 ]
@@ -192,21 +192,31 @@ def parse_detail(html: str, extrait_max: int) -> dict:
     info = {}
     for i, l in enumerate(lignes):
         for lab in LABELS:
-            if norm(l).startswith(norm(lab)):
+            if norm(l).startswith(norm(lab)) and not (lab == "Télétravail" and "possible" in norm(l)):
                 reste = l[len(lab):].strip(" : ")
                 if not reste and i + 1 < len(lignes):
                     reste = lignes[i + 1]
-                cle = norm(lab).replace("’", "'")
+                cle = norm(lab).replace("’", "'").replace("teletravail possible", "teletravail")
                 info.setdefault(cle, reste[:200])
-    # extrait : à partir de la description du poste si on la trouve
-    debut = 0
-    for marq in ("Description du poste", "Vos missions", "Missions", "Descriptif"):
-        k = texte.find(marq)
-        if k >= 0:
-            debut = k
-            break
-    extrait = re.sub(r"\s+", " ", texte[debut:])[:extrait_max]
-    return {"champs": info, "extrait": extrait, "texte_norm": norm(texte)}
+    # Zone utile : missions et profil, puis descriptif du service. On écarte la
+    # présentation générale de l'employeur et le bloc « offres recommandées »,
+    # qui contiennent des expressions sans rapport avec le poste.
+    def zone(debuts, fins):
+        k = min((texte.find(d) for d in debuts if texte.find(d) >= 0), default=-1)
+        if k < 0:
+            return ""
+        f = min((texte.find(x, k + 1) for x in fins if texte.find(x, k + 1) >= 0), default=len(texte))
+        return texte[k:f]
+    fin_offre = ["Des offres d'emplois recommandées", "Des offres d’emplois recommandées"]
+    missions = zone(["Vos missions", "Description du poste", "Missions"],
+                    ["Qui sommes-nous", "Éléments de candidature", "Langues\n"] + fin_offre)
+    service = zone(["Descriptif du service"], ["En savoir plus sur l'employeur",
+                    "En savoir plus sur l’employeur", "À propos de l'offre"] + fin_offre)
+    utile = (missions + "\n" + service).replace("Afficher la suite", "")
+    if not utile.strip():
+        utile = texte.split(fin_offre[0])[0]
+    extrait = re.sub(r"\s+", " ", utile).strip()[:extrait_max]
+    return {"champs": info, "extrait": extrait, "texte_norm": norm(utile)}
 
 
 # ---------------------------------------------------------------- filtres

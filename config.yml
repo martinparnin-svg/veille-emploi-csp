@@ -86,6 +86,18 @@ exclusions_intitule:
   - "aide-soignant"
   - "assistant familial"
   - "assistante familiale"
+  - "service social"
+  - "travailleur social"
+  - "socio-educati"
+  - "creche"
+  - "multi-accueil"
+  - "petite enfance"
+  - "jeunes enfants"
+  - "referent de parcours"
+  - "postdoc"
+  - "post-doc"
+  - "ingenieur de recherche"
+  - "gestionnaire d'infrastructures"
 
 # Longueur maximale de l'extrait de description conservé par offre.
 extrait_max: 1200
