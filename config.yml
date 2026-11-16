@@ -88,7 +88,7 @@ exclusions_intitule:
   - "assistante familiale"
 
 # Longueur maximale de l'extrait de description conservé par offre.
-extrait_max: 1500
+extrait_max: 1200
 # Nombre maximal de pages de résultats parcourues par mot-clé.
 pages_max: 15
 # Pause entre deux requêtes (secondes), pour ménager le site.

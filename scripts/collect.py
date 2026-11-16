@@ -366,6 +366,14 @@ def main() -> int:
                 norm(o["nature_emploi"])):
             ecartees.append({**o, "motif": "réservé aux fonctionnaires"})
             continue
+        # Le moteur CSP rapproche les mots séparément (« droits », « unies »…) :
+        # on exige qu'au moins une expression recherchée figure telle quelle.
+        texte = norm(o["titre"]) + " " + d["texte_norm"]
+        trouves = [k for k in cfg["mots_cles"] if norm(k) in texte]
+        if not trouves:
+            ecartees.append({**o, "motif": "expression absente du texte"})
+            continue
+        o["mots_cles"] = trouves
         if category_ok(o["categorie"], cfg) is False:
             ecartees.append({**o, "motif": f"catégorie {o['categorie']}"})
             continue
