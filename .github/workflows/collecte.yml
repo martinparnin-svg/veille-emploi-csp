@@ -1,13 +1,19 @@
 name: Collecte des offres CSP
 
-# Tous les matins vers 5h (Paris, heure d'hiver ; 6h en été), avec de la marge :
-# collecte des offres de la veille,
+# Tous les matins : collecte des offres de la veille,
 # enregistrées dans data/AAAA-MM-JJ.json et data/latest.json.
-# La tâche Claude planifiée de 8h10 lit data/latest.json.
+# La tâche Claude planifiée de 8h10 lit data/latest.json (et relance la collecte si elle manque).
+#
+# GitHub peut retarder ou sauter un déclenchement planifié, surtout à l'heure pile
+# (le créneau de 4h00 UTC a été sauté le 17/11/2026). D'où trois créneaux décalés :
+# les deux derniers ne font rien si la collecte du jour est déjà enregistrée.
+# Heures de Paris : hiver / été.
 
 on:
   schedule:
-    - cron: "0 4 * * *"
+    - cron: "47 3 * * *"   # 4h47 / 5h47
+    - cron: "37 4 * * *"   # 5h37 / 6h37 (rattrapage)
+    - cron: "29 5 * * *"   # 6h29 / 7h29 (rattrapage)
   workflow_dispatch:
     inputs:
       since:
@@ -39,14 +45,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Collecte du jour déjà faite ?
+        id: deja
+        run: |
+          J=$(TZ=Europe/Paris date +%F)
+          if [ "${{ github.event_name }}" = "schedule" ] && [ -f "data/$J.json" ]; then
+            echo "Collecte du $J déjà enregistrée : créneau de rattrapage inutile."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-python@v5
+        if: steps.deja.outputs.skip != 'true'
         with:
           python-version: "3.12"
 
       - name: Installer les dépendances
+        if: steps.deja.outputs.skip != 'true'
         run: pip install -q -r requirements.txt
 
       - name: Paramètres
+        if: steps.deja.outputs.skip != 'true'
         id: p
         run: |
           SINCE="${{ github.event.inputs.since }}"
@@ -64,10 +82,11 @@ jobs:
           echo "args=$ARGS" >> "$GITHUB_OUTPUT"
 
       - name: Collecter
+        if: steps.deja.outputs.skip != 'true'
         run: python scripts/collect.py ${{ steps.p.outputs.args }} 2>&1 | tee collecte.log
 
       - name: Enregistrer les résultats
-        if: always()
+        if: always() && steps.deja.outputs.skip != 'true'
         run: |
           mkdir -p logs && cp collecte.log "logs/derniere-collecte.log" || true
           git config user.name "veille-emploi-bot"
