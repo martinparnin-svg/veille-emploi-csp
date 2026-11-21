@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 collecte.log
+
+# Données personnelles et fichiers de travail de l'agent : jamais dans le dépôt
+profil.md
+tableurs/
